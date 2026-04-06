@@ -1,94 +1,164 @@
 # CODECRACK
-CodeCrack Agent
+--
+title: CodeCrack
+colorFrom: indigo
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+---
+CodeCrack — AI Code Review Dashboard
 
-Overview
-CodeCrack Agent is an intelligent system built to evaluate code outputs and make decisions automatically. Instead of relying only on fixed test cases, it follows an agent-based approach where results are analyzed, scored, and judged using a structured reward system.
-The goal of this project is to explore how AI-driven evaluation can make code assessment more flexible, scalable, and closer to real-world reasoning.
-
-Problem Statement
-Evaluating code is often limited to predefined test cases, which may not fully capture correctness, efficiency, or edge cases. This creates a gap where solutions might pass tests but still have underlying issues.
-This project focuses on addressing that gap by introducing an agent that can interpret outputs and make more informed decisions.
-
-Approach
-The system is designed around a simple but effective workflow:
-The agent connects to a local evaluation server
-It receives responses or outputs to analyze
-A reward system evaluates the result based on multiple factors
-A final decision is made, such as approval or rejection
-The emphasis is not just on correctness, but also on how efficiently and reliably the result is produced.
-
-Project Structure
-CODECRACK/
-│
-├── api.py              # Handles communication with the server
-├── app.py              # Entry point for running the application
-├── auth.py             # Manages authentication
-├── baseline.py         # Runs the agent workflow
-├── inference.py        # Core decision-making logic
-├── models.py           # Model configurations
-├── graders.py          # Evaluation logic
-├── rewards.py          # Reward calculation system
-├── tasks.py            # Task definitions
-├── environment.py      # Environment setup
-├── validate.sh         # Validation script
-│
-├── .env                # Configuration variables
-├── requirements.txt    # Dependencies
-├── Dockerfile          # Container setup
-└── README.md           # Documentation
-
-How It Works
-Once the agent starts, it establishes a connection with the server and begins processing tasks step by step. For each step:
-The output is analyzed
-Relevant metrics are calculated
-A reward score is assigned
-A decision is made based on that score
-This creates a loop where the agent continuously evaluates and improves decision-making consistency.
-
-Sample Output
-Starting CodeCrack Agent...
-
-Server connected
-
-[START] model=llama-3.3-70b-versatile
-
---- Step 1 ---
-Decision: approve
-Raw Line: None
-Used: 1
-
-Reward:
-{
-  "value": 0.0,
-  "breakdown": {
-    "issue_detection": 0.0,
-    "false_positive_penalty": -0.0,
-    "step_efficiency": 0.98
-  },
-  "final_score": 0.0
-}
-
-Done: True
-
-[END]
-
-This output reflects how the agent evaluates a step, assigns scores, and arrives at a final decision.
+AI agent training environment for automated code review with an interactive dashboard, structured difficulty levels, and carefully designed safe-code distractors that evaluate true understanding rather than simple pattern matching.
 
 Key Features
-Automated evaluation of code outputs
-Reward-based decision system
-Modular and easy-to-extend architecture
-Designed for integration with coding workflows and platforms
-Challenges
 
-During development, a few practical challenges came up:
-Interpreting inconsistent or incomplete responses from the server
-Designing a reward system that remains fair across different scenarios
-Balancing simplicity with meaningful evaluation
-Future Scope
+Safe-Code Distractors: Tasks include intentionally safe patterns that may appear vulnerable but are correctly implemented (such as parameterized SQL queries or proper lock handling). This ensures that solutions rely on reasoning instead of superficial detection.
 
-There are several directions this project can grow:
-Adding a visual dashboard for better interaction
-Supporting multiple types of tasks and programming languages
-Improving evaluation using more advanced learning-based methods
-Integrating with real coding platforms for live use
+Hybrid Baseline: Combines rule-based detection for common issues with a language model fallback for handling complex or ambiguous scenarios.
+
+Flexible Grading: A ±2 line tolerance ensures that minor positional differences do not unfairly penalize results.
+
+Progressive Difficulty: Tasks are structured across three levels—Easy (1 issue), Medium (2 issues), and Hard (3 issues).
+
+Baseline Performance
+[EASY  ] easy_sql_injection      : 1.000  (2 steps, 0 API calls)
+[MEDIUM] medium_race_condition   : 1.000  (3 steps, 0 API calls)
+[HARD  ] hard_memory_leak        : 1.000  (4 steps, 0 API calls)
+
+Average Score    : 1.000
+Average Steps    : 3.0
+Total API Calls  : 0
+
+The hybrid baseline relies on predefined issue mappings for built-in tasks, resulting in zero API calls. The language model is only used when evaluating custom or unseen inputs.
+
+Environment Overview
+Property	Value
+Domain	Software Engineering / Code Review
+Tasks	3 (easy → medium → hard)
+Reward range	-2.0 to +6.0
+Max steps	50 per episode
+Grading	0.5×recall + 0.3×precision + 0.2×severity (±2 line tolerance)
+
+Quick Start
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure API (choose one)
+export GROQ_API_KEY=gsk_...
+# OR
+export TOGETHER_API_KEY=...
+
+# Launch the dashboard
+python app.py
+# → c
+
+# Run baseline
+python inference.py
+pyhton baseline.py
+
+# Validate environment
+bash validate.sh
+
+Tasks
+Easy — SQL Injection Detection
+
+Code: 38-line authentication module
+Issue: 1 critical — unsafe string interpolation in SQL query (line 18)
+
+Distractors:
+
+get_user_by_id() uses parameterized queries (safe)
+log_attempt() uses f-string in logging (safe — not a query)
+get_users_by_role() uses parameterized queries (safe)
+render_welcome() uses formatting only for display (safe)
+Medium — Race Condition Analysis
+
+Code: 51-line BankAccount class
+Issues: 2 high severity
+
+Read-modify-write race in deposit() (line 16)
+Time-of-check to time-of-use issue in withdraw() (line 22)
+
+Distractors:
+
+transfer() follows correct lock ordering (safe)
+get_balance() performs read-only access (safe)
+get_statement() and freeze() use proper locking (safe)
+Hard — Memory Leak and Iterator Issues
+
+Code: 60-line TTL cache manager
+Issues: 3 (high + medium + high)
+
+Memory leak due to unmanaged listeners (line 11)
+Expired entries not removed in get() (line 27)
+Unsafe dictionary modification during iteration in cleanup_expired() (line 42)
+
+Distractors:
+
+get_stats() iterates safely without modification
+invalidate_prefix() collects keys before deletion
+get_active_values() reads values without mutation
+API Reference
+OpenEnv Interface
+from environment import CodeReviewEnv
+
+env = CodeReviewEnv()
+obs = env.reset(task_id="easy_sql_injection")
+
+from models import Action
+obs, reward, done, info = env.step(Action(
+    action_type="identify_issue",
+    issue_type="security",
+    line_number=18,
+    description="SQL injection via unsafe string construction",
+    severity="critical"
+))
+
+state = env.state()
+REST Endpoints
+Method	Path	Description
+GET	/	Health check
+POST	/reset?task_id=...	Reset environment
+POST	/step	Execute action
+GET	/state	Get current state
+GET	/tasks	List all tasks
+Grading Formula
+score = 0.5 × recall  +  0.3 × precision  +  0.2 × severity_match
+Component	Weight	Description
+Recall	50%	Percentage of actual issues identified
+Precision	30%	Accuracy of reported issues
+Severity	20%	Correct classification of severity
+
+Line tolerance: ±2 lines to handle minor variations
+
+Docker Deployment
+docker build -t code-review-env .
+docker run -p 7860:7860 \
+  -e GROQ_API_KEY=gsk_... \
+  code-review-env
+Hugging Face Spaces
+
+Already deployed at:
+https://huggingface.co/spaces/METAHACK/CodeCrack
+
+To update:
+
+git push hf main
+Pre-Submission Checklist
+bash validate.sh passes
+python inference.py completes within time limits
+Docker builds successfully
+Hugging Face Space responds correctly
+/reset endpoint works as expected
+All tasks return valid evaluation scores
+Dependencies
+pydantic==2.6.0 — Typed models
+fastapi==0.109.0 — API framework
+uvicorn==0.27.0 — Server runtime
+openai==1.12.0 — LLM client
+python-dotenv==1.0.0 — Environment configuration
+Team
+
+Authors: Madhan J and Sahithya BR
+Hackathon: Scaler Meta PyTorch OpenEnv Challenge 2025
