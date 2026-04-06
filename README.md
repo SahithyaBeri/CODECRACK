@@ -1,13 +1,14 @@
 # CODECRACK
---
+
+CodeCrack — AI Code Review Dashboard
+
 title: CodeCrack
 colorFrom: indigo
 colorTo: blue
 sdk: docker
 app_port: 7860
 pinned: false
----
-CodeCrack — AI Code Review Dashboard
+
 
 AI agent training environment for automated code review with an interactive dashboard, structured difficulty levels, and carefully designed safe-code distractors that evaluate true understanding rather than simple pattern matching.
 
